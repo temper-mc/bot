@@ -1,12 +1,18 @@
+#![feature(str_as_str)]
+
 use std::{env, sync::{LazyLock, OnceLock}};
 
 use octocrab::models::pulls::PullRequest;
 use poise::serenity_prelude::{ChannelId, ForumTagId, GuildId};
+use poise::serenity_prelude::prelude::SerenityError;
 use tokio::sync::{Mutex, mpsc::Sender};
 use tracing::error;
 
 pub mod pr_discussion;
 pub mod webhook;
+pub mod commands;
+pub type CmdContext<'a> = poise::Context<'a, (), SerenityError>;
+
 
 pub static TX: OnceLock<Mutex<Sender<Event>>> = OnceLock::new();
 

@@ -19,7 +19,6 @@ use tokio::sync::{
     mpsc::{Receiver, channel},
 };
 use tracing::warn;
-
 pub struct MainLoop {
     main_loop_running: AtomicBool,
 }
@@ -93,6 +92,9 @@ async fn setup_bot() {
                 additional_prefixes: vec![Prefix::Literal("!")],
                 ..Default::default()
             },
+            commands: vec![
+                bot::commands::file_search::file_search(),
+            ],
             ..Default::default()
         })
         .setup(move |ctx, _ready, framework| {
