@@ -1,5 +1,5 @@
 use crate::CmdContext;
-use crate::commands::file_search::{git, rg, to_link};
+use crate::commands::file_search::{git, rg, setup_repo, to_link, REPO_PATH};
 use poise::command;
 use poise::serenity_prelude::prelude::SerenityError;
 use std::{
@@ -27,23 +27,8 @@ pub async fn text_search(
             .await?;
         return Ok(());
     }
-    const REPO_PATH: &str = "./repo";
 
-    if !Path::new(REPO_PATH).exists() {
-        ctx.reply("Git repo needs to be cloned, this may take a moment...")
-            .await?;
-        ctx.defer().await?;
-        git::git_clone("https://github.com/temper-mc/temper.git", REPO_PATH).map_err(|err| {
-            error!("Failed to clone repository: {err}");
-            SerenityError::Other("Failed to clone repository")
-        })?;
-    } else {
-        ctx.defer().await?;
-        git::git_pull(REPO_PATH).map_err(|err| {
-            error!("Failed to pull repository: {err}");
-            SerenityError::Other("Failed to pull repository")
-        })?;
-    }
+    setup_repo(&ctx).await?;
 
     let matches = rg::ripgrep_matches_as_json_array(&query, Path::new(REPO_PATH)).map_err(|err| {
         error!("Failed to search repository: {err}");

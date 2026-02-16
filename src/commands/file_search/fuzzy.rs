@@ -1,13 +1,13 @@
 use nucleo_matcher::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
 use std::path::PathBuf;
 
-const EXLUDED_DIRS: [&str; 3] = ["target", ".git", ".etc"];
+const EXCLUDED_DIRS: [&str; 3] = ["target", ".git", ".etc"];
 
 pub fn fuzzy_search_dir(query: &str, dir: PathBuf) -> Vec<PathBuf> {
     let mut entries = vec![];
     for entry in walkdir::WalkDir::new(dir)
         .into_iter()
-        .filter_entry(|e| !EXLUDED_DIRS.contains(&e.file_name().to_str().unwrap_or("")))
+        .filter_entry(|e| !EXCLUDED_DIRS.contains(&e.file_name().to_str().unwrap_or("")))
         .filter_map(|e| e.ok())
     {
         if entry.file_type().is_file() {
@@ -23,7 +23,8 @@ pub fn fuzzy_search_dir(query: &str, dir: PathBuf) -> Vec<PathBuf> {
         .match_list(entries, &mut matcher)
         .into_iter()
         .map(|m| {
-            let stripped = m.0.strip_prefix("./repo\\").unwrap_or(&m.0);
+            let path = m.0.replace("\\", "/");
+            let stripped = path.strip_prefix("./repo/").unwrap_or(&path);
             PathBuf::from(stripped)
         })
         .collect()
