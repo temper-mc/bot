@@ -13,8 +13,9 @@ use octocrab::models::{
     webhook_events::{
         WebhookEvent, WebhookEventPayload, WebhookEventType,
         payload::{
-            PullRequestReviewWebhookEventAction, PullRequestReviewWebhookEventPayload,
-            PullRequestWebhookEventAction, PullRequestWebhookEventPayload,
+            PullRequestReviewCommentWebhookEventAction, PullRequestReviewWebhookEventAction,
+            PullRequestReviewWebhookEventPayload, PullRequestWebhookEventAction,
+            PullRequestWebhookEventPayload,
         },
     },
 };
@@ -103,7 +104,10 @@ async fn handle_pr_approved(event: Box<PullRequestReviewWebhookEventPayload>) {
         .state
         .is_some_and(|state| state == ReviewState::Approved);
     let is_contrib = matches!(
-        review.author_association.unwrap_or(AuthorAssociation::None),
+        review
+            .clone()
+            .author_association
+            .unwrap_or(AuthorAssociation::None),
         AuthorAssociation::Collaborator
             | AuthorAssociation::Contributor
             | AuthorAssociation::Member
@@ -113,12 +117,12 @@ async fn handle_pr_approved(event: Box<PullRequestReviewWebhookEventPayload>) {
     if approved && is_contrib {
         info!(
             "PR approved by {:?}: #{} - {:?} by {:?}",
-            review.user.map(|user| user.login),
+            review.clone().user.map(|user| user.login),
             pr.number,
             pr.clone().title,
             pr.clone().user.map(|u| u.login)
         );
-        send_event(Event::PullRequestApproved(pr)).await;
+        send_event(Event::PullRequestApproved(pr, review)).await;
     }
 }
 
@@ -151,6 +155,63 @@ async fn handle_pr_review_event(event: WebhookEvent) {
     }
 }
 
+async fn handle_pr_comment_event(event: WebhookEvent) {
+    let WebhookEventPayload::PullRequestReviewComment(event) = event.specific else {
+        error!("Invalid pull request review comment event payload!");
+        return;
+    };
+
+    if event.action != PullRequestReviewCommentWebhookEventAction::Created {
+        return;
+    }
+
+    send_event(Event::PullRequestComment(event.pull_request.number, event.comment.clone().body, event.comment.clone().user.unwrap().login)).await;
+}
+
+async fn handle_pr_thread_comment_event(event: WebhookEvent) {
+    let WebhookEventPayload::PullRequestReviewThread(event) = event.specific else {
+        error!("Invalid pull request review comment event payload!");
+        return;
+    };
+
+    let Some(comment) = event.thread.comments.last() else {
+        error!("Invalid thread comments!");
+        return;
+    };
+
+    send_event(Event::PullRequestComment(
+        event.pull_request.number,
+        comment.clone().body,
+        comment.clone().user.unwrap().login
+    ))
+    .await;
+}
+
+// for some reason issue comments are the same as pr comments? this makes everything much more annoying
+async fn handle_issue_comment(event: WebhookEvent) {
+    let WebhookEventPayload::IssueComment(event) = event.specific else {
+        error!("Invalid issue comment event payload!");
+        return;
+    };
+
+    let Some(pr) = event.issue.pull_request else {
+        return;
+    };
+
+    let path_segments = pr.html_url.path_segments().unwrap().collect::<Vec<&str>>();
+    let Ok(id) = path_segments.last().unwrap().parse::<u64>() else {
+        error!("Invalid PR URL: {}", pr.html_url);
+        return;
+    };
+    
+    send_event(Event::PullRequestComment(
+        id,
+        event.comment.clone().body.unwrap(),
+        event.comment.clone().user.login
+    ))
+    .await;
+}
+
 async fn push(
     Path(actual_secret): Path<String>,
     State(expected_secret): State<Arc<Secret>>,
@@ -174,6 +235,9 @@ async fn push(
     match event.kind {
         WebhookEventType::PullRequest => handle_pr_event(event).await,
         WebhookEventType::PullRequestReview => handle_pr_review_event(event).await,
+        WebhookEventType::PullRequestReviewComment => handle_pr_comment_event(event).await,
+        WebhookEventType::PullRequestReviewThread => handle_pr_thread_comment_event(event).await,
+        WebhookEventType::IssueComment => handle_issue_comment(event).await,
 
         _ => trace!("Webhook event of kind {:?}", event.kind),
     }

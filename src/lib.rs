@@ -1,7 +1,7 @@
 
 use std::{env, sync::{LazyLock, OnceLock}};
 
-use octocrab::models::pulls::PullRequest;
+use octocrab::models::pulls::{PullRequest, Review};
 use poise::serenity_prelude::{ChannelId, ForumTagId, GuildId};
 use poise::serenity_prelude::prelude::SerenityError;
 use tokio::sync::{Mutex, mpsc::Sender};
@@ -26,7 +26,8 @@ pub async fn send_event(event: Event) {
 pub enum Event {
     PullRequestOpened(PullRequest),
     PullRequestReady(PullRequest),
-    PullRequestApproved(PullRequest),
+    PullRequestComment(u64, String, String),
+    PullRequestApproved(PullRequest, Review),
     PullRequestMerged(PullRequest),
     PullRequestDrafted(PullRequest),
     PullRequestClosed(PullRequest),

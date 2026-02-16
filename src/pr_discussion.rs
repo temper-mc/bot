@@ -18,17 +18,6 @@ pub async fn pr_created(ctx: &Arc<Context>, pr: PullRequest) {
     };
 }
 
-pub async fn lock_channel_for_pr(ctx: &Arc<Context>, id: u64) {
-    let Some(channel) = find_pr_post(ctx, id).await else {
-        error!("Missing forum post for PR #{id}");
-        return;
-    };
-    
-    if let Err(err) = channel.edit_thread(ctx, EditThread::new().archived(true)).await {
-        error!("Failed archiving post for PR #{id}: {err}");
-    }
-}
-
 pub async fn apply_tag(ctx: &Arc<Context>, id: u64, tag: ForumTagId) {
     let Some(channel) = find_pr_post(ctx, id).await else {
         error!("Missing forum post for PR #{id}");
@@ -38,6 +27,17 @@ pub async fn apply_tag(ctx: &Arc<Context>, id: u64, tag: ForumTagId) {
     let edit = EditThread::new().applied_tags(vec![tag]);
     if let Err(err) = channel.edit_thread(ctx, edit).await {
         error!("Failed editing thread for PR #{id}: {err}");
+    }
+}
+
+pub async fn send_message(ctx: &Arc<Context>, id: u64, message: CreateMessage) {
+    let Some(channel) = find_pr_post(ctx, id).await else {
+        error!("Missing forum post for PR #{id}");
+        return;
+    };
+    
+    if let Err(err) = channel.send_message(ctx, message).await {
+        error!("Failed sending message for PR #{id}: {err}");
     }
 }
 
