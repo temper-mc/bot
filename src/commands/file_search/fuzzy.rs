@@ -1,4 +1,4 @@
-use nucleo_matcher::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
+use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use std::path::PathBuf;
 
 const EXCLUDED_DIRS: [&str; 3] = ["target", ".git", ".etc"];

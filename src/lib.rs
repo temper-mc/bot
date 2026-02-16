@@ -1,4 +1,3 @@
-#![feature(str_as_str)]
 
 use std::{env, sync::{LazyLock, OnceLock}};
 

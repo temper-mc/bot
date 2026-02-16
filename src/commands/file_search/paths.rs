@@ -1,9 +1,8 @@
+use crate::commands::file_search;
+use crate::commands::file_search::{fuzzy, setup_repo, REPO_PATH};
+use crate::CmdContext;
 use poise::command;
 use poise::serenity_prelude::Error as SerenityError;
-use tracing::error;
-use crate::CmdContext;
-use crate::commands::file_search;
-use crate::commands::file_search::{fuzzy, git, setup_repo, REPO_PATH};
 
 #[command(
     slash_command,

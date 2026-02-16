@@ -6,7 +6,7 @@ mod fuzzy;
 mod git;
 pub mod text;
 mod rg;
-mod paths;
+pub mod paths;
 
 const REPO_PATH: &str = "./repo";
 

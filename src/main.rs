@@ -93,7 +93,7 @@ async fn setup_bot() {
                 ..Default::default()
             },
             commands: vec![
-                bot::commands::file_search::file_search(),
+                bot::commands::file_search::paths::file_search(),
                 bot::commands::file_search::text::text_search()
             ],
             ..Default::default()

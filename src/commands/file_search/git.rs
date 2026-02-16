@@ -1,6 +1,6 @@
 use git2::{
-    build::CheckoutBuilder, AnnotatedCommit, FetchOptions, MergeAnalysis, MergeOptions, RemoteCallbacks,
-    Repository, Error,
+    build::CheckoutBuilder, AnnotatedCommit, Error, FetchOptions, MergeAnalysis,
+    RemoteCallbacks, Repository,
 };
 
 pub fn git_clone(repo_url: &str, repo_path: &str) -> Result<(), Error> {

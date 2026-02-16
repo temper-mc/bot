@@ -1,10 +1,9 @@
 use crate::CmdContext;
-use crate::commands::file_search::{git, rg, setup_repo, to_link, REPO_PATH};
+use crate::commands::file_search::{rg, setup_repo, to_link, REPO_PATH};
 use poise::command;
 use poise::serenity_prelude::prelude::SerenityError;
 use std::{
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
+    path::{Path},
 };
 use tracing::error;
 
