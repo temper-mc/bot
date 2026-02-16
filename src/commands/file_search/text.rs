@@ -57,7 +57,8 @@ pub async fn text_search(
             .into_iter()
             .take(limit.unwrap_or(3) as usize)
             .map(|m| {
-                let stripped_path = m.path.strip_prefix("./repo\\").unwrap_or(&m.path);
+                let path = m.path.replace("\\", "/");
+                let stripped_path = path.strip_prefix("./repo/").unwrap_or(&path);
                 format!("- {}: `{}`", to_link(stripped_path.to_string(), Some(m.line_number)), m.line)
             })
             .collect::<Vec<_>>()
