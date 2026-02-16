@@ -94,6 +94,7 @@ async fn setup_bot() {
             },
             commands: vec![
                 bot::commands::file_search::file_search(),
+                bot::commands::file_search::text::text_search()
             ],
             ..Default::default()
         })
