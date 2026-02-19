@@ -24,8 +24,8 @@ pub struct MainLoop {
     main_loop_running: AtomicBool,
 }
 
-impl MainLoop {
-    pub fn new() -> Self {
+impl Default for MainLoop {
+    fn default() -> Self {
         Self {
             main_loop_running: AtomicBool::new(false),
         }
@@ -41,10 +41,8 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
                 pr_discussion::send_message(
                     ctx,
                     pr.number,
-                    CreateMessage::new().content(&format!(
-                        "Pull request #{} **ready for review**!",
-                        pr.number
-                    )),
+                    CreateMessage::new()
+                        .content(format!("Pull request #{} **ready for review**!", pr.number)),
                 )
                 .await
             }
@@ -57,7 +55,7 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
                 pr_discussion::send_message(
                     ctx,
                     pr.number,
-                    CreateMessage::new().content(&format!(
+                    CreateMessage::new().content(format!(
                         "Pull request #{} was approved by **{}**!",
                         pr.number, user
                     )),
@@ -73,7 +71,7 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
                 pr_discussion::send_message(
                     ctx,
                     pr.number,
-                    CreateMessage::new().content(&format!(
+                    CreateMessage::new().content(format!(
                         "Pull request #{} was merged by **{}** :tada:!",
                         pr.number, user
                     )),
@@ -89,7 +87,7 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
                     ctx,
                     pr.number,
                     CreateMessage::new()
-                        .content(&format!("Pull request #{} was closed!", pr.number)),
+                        .content(format!("Pull request #{} was closed!", pr.number)),
                 )
                 .await;
             }
@@ -102,7 +100,7 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
                 pr_discussion::send_message(
                     ctx,
                     pr,
-                    CreateMessage::new().content(&format!("{comment}\n~ {user}")),
+                    CreateMessage::new().content(format!("{comment}\n~ {user}")),
                 )
                 .await;
             }
@@ -155,6 +153,7 @@ async fn setup_bot() {
             commands: vec![
                 bot::commands::file_search::paths::file_search(),
                 bot::commands::file_search::text::text_search(),
+                bot::commands::merge::merge(),
             ],
             ..Default::default()
         })
@@ -173,7 +172,7 @@ async fn setup_bot() {
 
     let mut client = ClientBuilder::new(token, intents)
         .framework(framework)
-        .event_handler(MainLoop::new())
+        .event_handler(MainLoop::default())
         .await
         .unwrap();
     client.start().await.unwrap()

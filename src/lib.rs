@@ -28,13 +28,13 @@ pub enum Event {
     PullRequestOpened(PullRequest),
     PullRequestReady(PullRequest),
     PullRequestComment(u64, String, String),
-    PullRequestApproved(PullRequest, Review),
+    PullRequestApproved(PullRequest, Box<Review>),
     PullRequestMerged(PullRequest),
     PullRequestDrafted(PullRequest),
     PullRequestClosed(PullRequest),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct EnvVars {
     pub guild: GuildId,
     pub pr_channel: ChannelId,
@@ -44,14 +44,19 @@ pub struct EnvVars {
     pub tag_merged: ForumTagId,
     pub tag_closed: ForumTagId,
     pub member_role: RoleId,
+    pub maintainer_role: RoleId,
+
+    pub repo_owner: String,
+    pub repo: String,
+    pub github_token: String,
 }
 
 impl EnvVars {
     fn get(name: &str) -> u64 {
         env::var(name)
-            .expect(&format!("missing env var {name}"))
+            .unwrap_or_else(|_| panic!("missing env var {name}"))
             .parse::<u64>()
-            .expect(&format!("invalid env var {name}"))
+            .unwrap_or_else(|_| panic!("invalid env var {name}"))
     }
 
     fn new() -> Self {
@@ -64,6 +69,11 @@ impl EnvVars {
             tag_merged: ForumTagId::new(Self::get("FORUM_TAG_MERGED")),
             tag_closed: ForumTagId::new(Self::get("FORUM_TAG_CLOSED")),
             member_role: RoleId::new(Self::get("MEMBER_ROLE")),
+            maintainer_role: RoleId::new(Self::get("MAINTAINER_ROLE")),
+
+            repo_owner: env::var("REPO_OWNER").expect("missing env var REPO_OWNER"),
+            repo: env::var("REPO").expect("missing env var REPO"),
+            github_token: env::var("GITHUB_TOKEN").expect("missing env var GITHUB_TOKEN"),
         }
     }
 }

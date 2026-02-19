@@ -27,7 +27,7 @@ pub fn ripgrep_matches_as_json_array(
     let stdout = child
         .stdout
         .take()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "failed to capture rg stdout"))?;
+        .ok_or_else(|| io::Error::other("failed to capture rg stdout"))?;
 
     let reader = BufReader::new(stdout);
 
@@ -58,10 +58,7 @@ pub fn ripgrep_matches_as_json_array(
     let status = child.wait()?;
 
     if status.code().unwrap_or(2) > 1 {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("rg failed: {status}"),
-        ));
+        return Err(io::Error::other(format!("rg failed: {status}")));
     }
 
     let matches: Vec<RipgrepMatch> = matches

@@ -18,7 +18,7 @@ pub async fn text_search(
     #[max = 20]
     limit: Option<u8>,
 ) -> Result<(), SerenityError> {
-    if !which::which("rg").is_ok() {
+    if which::which("rg").is_err() {
         ctx.reply(
             "Ripgrep (rg) is not installed or not in PATH. Please install it to use this command.",
         )

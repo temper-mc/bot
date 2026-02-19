@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use octocrab::models::pulls::PullRequest;
 use poise::serenity_prelude::{
-    ChannelId, Context, CreateForumPost, CreateMessage, EditThread, ForumTagId,
+    ChannelId, Context, CreateForumPost, CreateMessage, EditThread, ForumTagId, GuildChannel,
 };
 use tracing::error;
 
@@ -56,6 +56,13 @@ pub async fn send_message(ctx: &Arc<Context>, id: u64, message: CreateMessage) {
     }
 }
 
+pub fn find_pr_from_post(channel: GuildChannel) -> Option<u64> {
+    let name_stripped = channel.name().strip_prefix("#")?;
+    let words = name_stripped.split_whitespace().collect::<Vec<&str>>();
+
+    words.first().and_then(|word| word.parse::<u64>().ok())
+}
+
 async fn find_pr_post(ctx: &Arc<Context>, id: u64) -> Option<ChannelId> {
     let threads = match ENV_VARS.guild.get_active_threads(ctx).await {
         Ok(data) => data,
@@ -66,7 +73,7 @@ async fn find_pr_post(ctx: &Arc<Context>, id: u64) -> Option<ChannelId> {
     };
 
     for thread in threads.threads {
-        if !thread.parent_id.is_some_and(|id| id == ENV_VARS.pr_channel) {
+        if thread.parent_id.is_none_or(|id| id != ENV_VARS.pr_channel) {
             continue;
         }
 

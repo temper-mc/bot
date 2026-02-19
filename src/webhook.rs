@@ -122,7 +122,7 @@ async fn handle_pr_approved(event: Box<PullRequestReviewWebhookEventPayload>) {
             pr.clone().title,
             pr.clone().user.map(|u| u.login)
         );
-        send_event(Event::PullRequestApproved(pr, review)).await;
+        send_event(Event::PullRequestApproved(pr, Box::new(review))).await;
     }
 }
 
