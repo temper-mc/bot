@@ -1,9 +1,9 @@
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use std::io;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use serde_json::{json, Value};
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct RipgrepMatch {
@@ -12,7 +12,10 @@ pub struct RipgrepMatch {
     pub line: String,
 }
 
-pub fn ripgrep_matches_as_json_array(pattern: &str, search_path: &Path) -> io::Result<Vec<RipgrepMatch>> {
+pub fn ripgrep_matches_as_json_array(
+    pattern: &str,
+    search_path: &Path,
+) -> io::Result<Vec<RipgrepMatch>> {
     let mut child = Command::new("rg")
         .arg("--json")
         .arg(pattern)
@@ -53,17 +56,18 @@ pub fn ripgrep_matches_as_json_array(pattern: &str, search_path: &Path) -> io::R
     }
 
     let status = child.wait()?;
-    
+
     if status.code().unwrap_or(2) > 1 {
         return Err(io::Error::new(
             io::ErrorKind::Other,
             format!("rg failed: {status}"),
         ));
     }
-    
-    let matches: Vec<RipgrepMatch> = matches.into_iter()
+
+    let matches: Vec<RipgrepMatch> = matches
+        .into_iter()
         .filter_map(|v| serde_json::from_value(v).ok())
         .collect();
-    
+
     Ok(matches)
 }

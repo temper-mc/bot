@@ -1,6 +1,6 @@
 use git2::{
-    build::CheckoutBuilder, AnnotatedCommit, Error, FetchOptions, MergeAnalysis,
-    RemoteCallbacks, Repository,
+    AnnotatedCommit, Error, FetchOptions, MergeAnalysis, RemoteCallbacks, Repository,
+    build::CheckoutBuilder,
 };
 
 pub fn git_clone(repo_url: &str, repo_path: &str) -> Result<(), Error> {
@@ -13,14 +13,15 @@ pub fn git_pull(repo_path: &str) -> Result<(), Error> {
 
     // Get current branch
     let head = repo.head()?;
-    let branch = head.shorthand().ok_or_else(|| Error::from_str("Invalid branch name"))?;
+    let branch = head
+        .shorthand()
+        .ok_or_else(|| Error::from_str("Invalid branch name"))?;
     let branch_ref = format!("refs/heads/{}", branch);
 
     // Setup authentication callbacks (works for public repos and most ssh setups)
     let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username, _allowed| {
-        git2::Cred::ssh_key_from_agent(username.unwrap())
-    });
+    callbacks
+        .credentials(|_url, username, _allowed| git2::Cred::ssh_key_from_agent(username.unwrap()));
 
     let mut fetch_options = FetchOptions::new();
     fetch_options.remote_callbacks(callbacks);
@@ -52,16 +53,13 @@ fn fast_forward(
     local_branch: &str,
     fetch_commit: &AnnotatedCommit,
 ) -> Result<(), Error> {
-
     let mut reference = repo.find_reference(local_branch)?;
 
     reference.set_target(fetch_commit.id(), "Fast-Forward")?;
     repo.set_head(local_branch)?;
 
     repo.checkout_head(Some(
-        CheckoutBuilder::default()
-            .allow_conflicts(false)
-            .force(),
+        CheckoutBuilder::default().allow_conflicts(false).force(),
     ))?;
 
     Ok(())

@@ -1,12 +1,12 @@
+use crate::CmdContext;
 use poise::serenity_prelude::prelude::SerenityError;
 use tracing::error;
-use crate::CmdContext;
 
 mod fuzzy;
 mod git;
-pub mod text;
-mod rg;
 pub mod paths;
+mod rg;
+pub mod text;
 
 const REPO_PATH: &str = "./repo";
 
@@ -21,7 +21,6 @@ fn to_link(path: String, line: Option<u64>) -> String {
 }
 
 async fn setup_repo(ctx: &CmdContext<'_>) -> Result<(), SerenityError> {
-
     if !std::path::Path::new(REPO_PATH).exists() {
         ctx.reply("Git repo needs to be cloned, this may take a moment...")
             .await?;
@@ -31,7 +30,9 @@ async fn setup_repo(ctx: &CmdContext<'_>) -> Result<(), SerenityError> {
                 error!("Failed to clone repository: {err}");
                 SerenityError::Other("Failed to clone repository")
             })
-        }).await.map_err(|err| {
+        })
+        .await
+        .map_err(|err| {
             error!("Failed to clone repository: {err}");
             SerenityError::Other("Failed to clone repository")
         })??;

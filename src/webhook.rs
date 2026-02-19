@@ -165,7 +165,12 @@ async fn handle_pr_comment_event(event: WebhookEvent) {
         return;
     }
 
-    send_event(Event::PullRequestComment(event.pull_request.number, event.comment.clone().body, event.comment.clone().user.unwrap().login)).await;
+    send_event(Event::PullRequestComment(
+        event.pull_request.number,
+        event.comment.clone().body,
+        event.comment.clone().user.unwrap().login,
+    ))
+    .await;
 }
 
 async fn handle_pr_thread_comment_event(event: WebhookEvent) {
@@ -182,7 +187,7 @@ async fn handle_pr_thread_comment_event(event: WebhookEvent) {
     send_event(Event::PullRequestComment(
         event.pull_request.number,
         comment.clone().body,
-        comment.clone().user.unwrap().login
+        comment.clone().user.unwrap().login,
     ))
     .await;
 }
@@ -203,11 +208,11 @@ async fn handle_issue_comment(event: WebhookEvent) {
         error!("Invalid PR URL: {}", pr.html_url);
         return;
     };
-    
+
     send_event(Event::PullRequestComment(
         id,
         event.comment.clone().body.unwrap(),
-        event.comment.clone().user.login
+        event.comment.clone().user.login,
     ))
     .await;
 }

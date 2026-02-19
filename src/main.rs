@@ -11,7 +11,8 @@ use bot::{ENV_VARS, Event, TX, pr_discussion, webhook::setup_webhook};
 use poise::{
     Framework, FrameworkOptions, Prefix, PrefixFrameworkOptions,
     serenity_prelude::{
-        ClientBuilder, Context, CreateMessage, Error, EventHandler, GatewayIntents, GuildId, Member, async_trait
+        ClientBuilder, Context, CreateMessage, Error, EventHandler, GatewayIntents, GuildId,
+        Member, async_trait,
     },
 };
 use tokio::sync::{
@@ -37,29 +38,74 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
             Event::PullRequestOpened(pr) => pr_discussion::pr_created(ctx, pr).await,
             Event::PullRequestReady(pr) => {
                 pr_discussion::apply_tag(ctx, pr.number, ENV_VARS.tag_review_needed).await;
-                pr_discussion::send_message(ctx, pr.number, CreateMessage::new().content(&format!("Pull request #{} **ready for review**!", pr.number))).await
+                pr_discussion::send_message(
+                    ctx,
+                    pr.number,
+                    CreateMessage::new().content(&format!(
+                        "Pull request #{} **ready for review**!",
+                        pr.number
+                    )),
+                )
+                .await
             }
             Event::PullRequestApproved(pr, review) => {
                 pr_discussion::apply_tag(ctx, pr.number, ENV_VARS.tag_approved).await;
-                let user = review.user.map(|u| u.login).unwrap_or("unknown".to_string());
-                pr_discussion::send_message(ctx, pr.number, CreateMessage::new().content(&format!("Pull request #{} was approved by **{}**!", pr.number, user))).await
+                let user = review
+                    .user
+                    .map(|u| u.login)
+                    .unwrap_or("unknown".to_string());
+                pr_discussion::send_message(
+                    ctx,
+                    pr.number,
+                    CreateMessage::new().content(&format!(
+                        "Pull request #{} was approved by **{}**!",
+                        pr.number, user
+                    )),
+                )
+                .await
             }
             Event::PullRequestMerged(pr) => {
                 pr_discussion::apply_tag(ctx, pr.number, ENV_VARS.tag_merged).await;
-                let user = pr.merged_by.map(|u| u.login).unwrap_or("unknown".to_string());
-                pr_discussion::send_message(ctx, pr.number, CreateMessage::new().content(&format!("Pull request #{} was merged by **{}** :tada:!", pr.number, user))).await;
+                let user = pr
+                    .merged_by
+                    .map(|u| u.login)
+                    .unwrap_or("unknown".to_string());
+                pr_discussion::send_message(
+                    ctx,
+                    pr.number,
+                    CreateMessage::new().content(&format!(
+                        "Pull request #{} was merged by **{}** :tada:!",
+                        pr.number, user
+                    )),
+                )
+                .await;
             }
             Event::PullRequestDrafted(pr) => {
                 pr_discussion::apply_tag(ctx, pr.number, ENV_VARS.tag_draft).await
             }
             Event::PullRequestClosed(pr) => {
                 pr_discussion::apply_tag(ctx, pr.number, ENV_VARS.tag_closed).await;
-                pr_discussion::send_message(ctx, pr.number, CreateMessage::new().content(&format!("Pull request #{} was closed!", pr.number))).await;
+                pr_discussion::send_message(
+                    ctx,
+                    pr.number,
+                    CreateMessage::new()
+                        .content(&format!("Pull request #{} was closed!", pr.number)),
+                )
+                .await;
             }
             Event::PullRequestComment(pr, comment, user) => {
-                let comment = comment.lines().map(|l| format!("> {l}")).collect::<Vec<String>>().join("\n");
-                pr_discussion::send_message(ctx, pr, CreateMessage::new().content(&format!("{comment}\n~ {user}"))).await;
-            },
+                let comment = comment
+                    .lines()
+                    .map(|l| format!("> {l}"))
+                    .collect::<Vec<String>>()
+                    .join("\n");
+                pr_discussion::send_message(
+                    ctx,
+                    pr,
+                    CreateMessage::new().content(&format!("{comment}\n~ {user}")),
+                )
+                .await;
+            }
         }
     }
 }
@@ -83,7 +129,7 @@ impl EventHandler for MainLoop {
             self.main_loop_running.swap(true, Ordering::Relaxed);
         }
     }
-    
+
     async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
         if let Err(err) = new_member.add_role(ctx, ENV_VARS.member_role).await {
             error!("Failed assigning member role to new member: {err}");
@@ -108,7 +154,7 @@ async fn setup_bot() {
             },
             commands: vec![
                 bot::commands::file_search::paths::file_search(),
-                bot::commands::file_search::text::text_search()
+                bot::commands::file_search::text::text_search(),
             ],
             ..Default::default()
         })

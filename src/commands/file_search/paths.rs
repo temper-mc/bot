@@ -1,6 +1,6 @@
-use crate::commands::file_search;
-use crate::commands::file_search::{fuzzy, setup_repo, REPO_PATH};
 use crate::CmdContext;
+use crate::commands::file_search;
+use crate::commands::file_search::{REPO_PATH, fuzzy, setup_repo};
 use poise::command;
 use poise::serenity_prelude::Error as SerenityError;
 
@@ -18,7 +18,6 @@ pub async fn file_search(
     #[max = 20]
     limit: Option<u8>,
 ) -> Result<(), SerenityError> {
-
     let res_count = limit.unwrap_or(3);
     setup_repo(&ctx).await?;
 
@@ -31,7 +30,12 @@ pub async fn file_search(
         let response = results
             .into_iter()
             .take(res_count as usize)
-            .map(|p| format!("- {}", file_search::to_link(p.to_string_lossy().to_string(), None)))
+            .map(|p| {
+                format!(
+                    "- {}",
+                    file_search::to_link(p.to_string_lossy().to_string(), None)
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n");
         ctx.say(format!("Found files for query `{query}`:\n{response}"))
