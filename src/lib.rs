@@ -2,7 +2,7 @@
 use std::{env, sync::{LazyLock, OnceLock}};
 
 use octocrab::models::pulls::{PullRequest, Review};
-use poise::serenity_prelude::{ChannelId, ForumTagId, GuildId};
+use poise::serenity_prelude::{ChannelId, ForumTagId, GuildId, RoleId};
 use poise::serenity_prelude::prelude::SerenityError;
 use tokio::sync::{Mutex, mpsc::Sender};
 use tracing::error;
@@ -42,6 +42,7 @@ pub struct EnvVars {
     pub tag_approved: ForumTagId,
     pub tag_merged: ForumTagId,
     pub tag_closed: ForumTagId,
+    pub member_role: RoleId,
 }
 
 impl EnvVars {
@@ -60,7 +61,8 @@ impl EnvVars {
             tag_review_needed: ForumTagId::new(Self::get("FORUM_TAG_REVIEW_NEEDED")),
             tag_approved: ForumTagId::new(Self::get("FORUM_TAG_APPROVED")),
             tag_merged: ForumTagId::new(Self::get("FORUM_TAG_MERGED")),
-            tag_closed: ForumTagId::new(Self::get("FORUM_TAG_CLOSED"))
+            tag_closed: ForumTagId::new(Self::get("FORUM_TAG_CLOSED")),
+            member_role: RoleId::new(Self::get("MEMBER_ROLE"))
         }
     }
 }

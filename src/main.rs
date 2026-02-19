@@ -11,14 +11,14 @@ use bot::{ENV_VARS, Event, TX, pr_discussion, webhook::setup_webhook};
 use poise::{
     Framework, FrameworkOptions, Prefix, PrefixFrameworkOptions,
     serenity_prelude::{
-        ClientBuilder, Context, CreateMessage, Error, EventHandler, GatewayIntents, GuildId, async_trait
+        ClientBuilder, Context, CreateMessage, Error, EventHandler, GatewayIntents, GuildId, Member, async_trait
     },
 };
 use tokio::sync::{
     Mutex,
     mpsc::{Receiver, channel},
 };
-use tracing::warn;
+use tracing::{error, warn};
 pub struct MainLoop {
     main_loop_running: AtomicBool,
 }
@@ -81,6 +81,12 @@ impl EventHandler for MainLoop {
             });
 
             self.main_loop_running.swap(true, Ordering::Relaxed);
+        }
+    }
+    
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
+        if let Err(err) = new_member.add_role(ctx, ENV_VARS.member_role).await {
+            error!("Failed assigning member role to new member: {err}");
         }
     }
 }
