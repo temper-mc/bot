@@ -22,12 +22,14 @@ use tokio::sync::{
 use tracing::{error, warn};
 pub struct MainLoop {
     main_loop_running: AtomicBool,
+    rx: Arc<Mutex<Receiver<Event>>>, // yay, jank!
 }
 
-impl Default for MainLoop {
-    fn default() -> Self {
+impl MainLoop {
+    pub fn new(rx: Arc<Mutex<Receiver<Event>>>) -> Self {
         Self {
             main_loop_running: AtomicBool::new(false),
+            rx,
         }
     }
 }
@@ -113,13 +115,11 @@ impl EventHandler for MainLoop {
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
         if !self.main_loop_running.load(Ordering::Relaxed) {
             let ctx = Arc::new(ctx);
-
-            let (tx, mut rx) = channel::<Event>(16);
-            TX.set(Mutex::new(tx)).unwrap();
+            let rx = self.rx.clone();
 
             tokio::spawn(async move {
                 loop {
-                    run_main_loop(&ctx, &mut rx).await;
+                    run_main_loop(&ctx, &mut *rx.lock().await).await;
                     tokio::time::sleep(Duration::from_millis(100)).await
                 }
             });
@@ -170,9 +170,11 @@ async fn setup_bot() {
         })
         .build();
 
+    let (tx, rx) = channel::<Event>(16);
+    TX.set(Mutex::new(tx)).unwrap();
     let mut client = ClientBuilder::new(token, intents)
         .framework(framework)
-        .event_handler(MainLoop::default())
+        .event_handler(MainLoop::new(Arc::new(Mutex::new(rx))))
         .await
         .unwrap();
     client.start().await.unwrap()
