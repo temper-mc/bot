@@ -32,7 +32,7 @@ async fn handle_pr_created(event: Box<PullRequestWebhookEventPayload>) {
         "PR created: #{} - {:?} by {:?}",
         event.number,
         pr.clone().title,
-        pr.clone().user.map(|u| u.login)
+        pr.clone().user.login
     );
     send_event(Event::PullRequestOpened(pr)).await;
 }
@@ -43,19 +43,19 @@ async fn handle_pr_ready(event: Box<PullRequestWebhookEventPayload>) {
         "PR ready for review: #{} - {:?} by {:?}",
         event.number,
         pr.clone().title,
-        pr.clone().user.map(|u| u.login)
+        pr.clone().user.login
     );
     send_event(Event::PullRequestReady(pr)).await;
 }
 
 async fn handle_pr_closed(event: Box<PullRequestWebhookEventPayload>) {
     let pr = event.pull_request;
-    if !pr.merged.unwrap_or_default() {
+    if !pr.merged {
         info!(
             "PR closed: #{} - {:?} by {:?}",
             event.number,
             pr.clone().title,
-            pr.clone().user.map(|u| u.login)
+            pr.clone().user.login
         );
         send_event(Event::PullRequestClosed(pr)).await;
     } else {
@@ -63,7 +63,7 @@ async fn handle_pr_closed(event: Box<PullRequestWebhookEventPayload>) {
             "PR merged: #{} - {:?} by {:?}",
             event.number,
             pr.clone().title,
-            pr.clone().user.map(|u| u.login)
+            pr.clone().user.login
         );
         send_event(Event::PullRequestMerged(pr)).await;
     }
@@ -75,7 +75,7 @@ async fn handle_pr_drafted(event: Box<PullRequestWebhookEventPayload>) {
         "PR drafted: #{} - {:?} by {:?}",
         event.number,
         pr.clone().title,
-        pr.clone().user.map(|u| u.login)
+        pr.clone().user.login
     );
     send_event(Event::PullRequestDrafted(pr)).await;
 }
@@ -86,7 +86,7 @@ async fn handle_pr_reopened(event: Box<PullRequestWebhookEventPayload>) {
         "PR reopened: #{} - {:?} by {:?}",
         event.number,
         pr.clone().title,
-        pr.clone().user.map(|u| u.login)
+        pr.clone().user.login
     );
 
     if pr.draft.unwrap_or_default() {
@@ -120,7 +120,7 @@ async fn handle_pr_approved(event: Box<PullRequestReviewWebhookEventPayload>) {
             review.clone().user.map(|user| user.login),
             pr.number,
             pr.clone().title,
-            pr.clone().user.map(|u| u.login)
+            pr.clone().user.login
         );
         send_event(Event::PullRequestApproved(pr, Box::new(review))).await;
     }
@@ -165,10 +165,17 @@ async fn handle_pr_comment_event(event: WebhookEvent) {
         return;
     }
 
+    let comment = event.comment;
+    let location = match comment.line.or(comment.original_line) {
+        Some(line) => format!("{}:{}", comment.path, line),
+        None => comment.path,
+    };
+
     send_event(Event::PullRequestComment(
         event.pull_request.number,
-        event.comment.clone().body,
-        event.comment.clone().user.unwrap().login,
+        comment.body,
+        comment.user.unwrap().login,
+        Some(location),
     ))
     .await;
 }
@@ -179,17 +186,7 @@ async fn handle_pr_thread_comment_event(event: WebhookEvent) {
         return;
     };
 
-    let Some(comment) = event.thread.comments.last() else {
-        error!("Invalid thread comments!");
-        return;
-    };
-
-    send_event(Event::PullRequestComment(
-        event.pull_request.number,
-        comment.clone().body,
-        comment.clone().user.unwrap().login,
-    ))
-    .await;
+    trace!("Ignored PR review thread event action: {:?}", event.action);
 }
 
 // for some reason issue comments are the same as pr comments? this makes everything much more annoying
@@ -213,6 +210,7 @@ async fn handle_issue_comment(event: WebhookEvent) {
         id,
         event.comment.clone().body.unwrap(),
         event.comment.clone().user.login,
+        None,
     ))
     .await;
 }

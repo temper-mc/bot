@@ -93,16 +93,19 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
                 )
                 .await;
             }
-            Event::PullRequestComment(pr, comment, user) => {
+            Event::PullRequestComment(pr, comment, user, location) => {
                 let comment = comment
                     .lines()
                     .map(|l| format!("> {l}"))
                     .collect::<Vec<String>>()
                     .join("\n");
+                let location = location
+                    .map(|location| format!("`{location}`\n"))
+                    .unwrap_or_default();
                 pr_discussion::send_message(
                     ctx,
                     pr,
-                    CreateMessage::new().content(format!("{comment}\n~ {user}")),
+                    CreateMessage::new().content(format!("{location}{comment}\n~ {user}")),
                 )
                 .await;
             }

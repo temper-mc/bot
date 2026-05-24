@@ -27,7 +27,7 @@ pub async fn send_event(event: Event) {
 pub enum Event {
     PullRequestOpened(PullRequest),
     PullRequestReady(PullRequest),
-    PullRequestComment(u64, String, String),
+    PullRequestComment(u64, String, String, Option<String>),
     PullRequestApproved(PullRequest, Box<Review>),
     PullRequestMerged(PullRequest),
     PullRequestDrafted(PullRequest),
