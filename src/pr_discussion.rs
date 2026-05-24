@@ -12,12 +12,13 @@ pub async fn pr_created(ctx: &Arc<Context>, pr: PullRequest) {
     let name = format!(
         "#{} - {} by {}",
         pr.number,
-        pr.title,
-        pr.user.login
+        pr.title.unwrap_or("Unnamed".to_string()),
+        pr.user.map(|u| u.login).unwrap_or("Unknown".to_string())
     );
 
     let url = pr
         .html_url
+        .expect("PR missing HTML URL?")
         .as_str()
         .to_string();
     let tag = if pr.draft.unwrap_or_default() {
