@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use bot::{ENV_VARS, Event, TX, pr_discussion, webhook::setup_webhook};
+use bot::{ENV_VARS, Event, TX, pr_discussion, test_results, webhook::setup_webhook};
 use poise::{
     Framework, FrameworkOptions, Prefix, PrefixFrameworkOptions,
     serenity_prelude::{
@@ -94,6 +94,13 @@ async fn run_main_loop(ctx: &Arc<Context>, rx: &mut Receiver<Event>) {
                 .await;
             }
             Event::PullRequestComment(pr, comment, user, location) => {
+                if location.is_none()
+                    && let Some(message) = test_results::test_results_message(&comment, &user)
+                {
+                    pr_discussion::send_message(ctx, pr, message).await;
+                    continue;
+                }
+
                 let comment = comment
                     .lines()
                     .map(|l| format!("> {l}"))

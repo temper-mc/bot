@@ -11,6 +11,7 @@ use tracing::error;
 
 pub mod commands;
 pub mod pr_discussion;
+pub mod test_results;
 pub mod webhook;
 pub type CmdContext<'a> = poise::Context<'a, (), SerenityError>;
 
