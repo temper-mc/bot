@@ -1,4 +1,11 @@
+use std::io::Read;
+
+use base64::{Engine, engine::general_purpose::STANDARD};
+use flate2::read::GzDecoder;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedFooter, CreateMessage};
+use serde::Deserialize;
+
+const TEST_RESULTS_DATA_PREFIX: &str = "[test-results]:data:application/gzip;base64,";
 
 #[derive(Debug, PartialEq, Eq)]
 struct ResultCounts {
@@ -28,7 +35,10 @@ pub fn test_results_message(body: &str, user: &str) -> Option<CreateMessage> {
 
     let embed = CreateEmbed::new()
         .title("Test Results")
-        .description(format!("Results for commit `{}`.", report.commit))
+        .description(format!(
+            "Results for commit `{}`.",
+            display_commit(&report.commit)
+        ))
         .color(color)
         .field(
             "Summary",
@@ -48,6 +58,23 @@ pub fn test_results_message(body: &str, user: &str) -> Option<CreateMessage> {
 }
 
 fn parse_test_results(body: &str) -> Option<TestResults> {
+    parse_embedded_test_results(body).or_else(|| parse_visible_test_results(body))
+}
+
+fn parse_embedded_test_results(body: &str) -> Option<TestResults> {
+    let payload = body
+        .lines()
+        .map(str::trim)
+        .find_map(|line| line.strip_prefix(TEST_RESULTS_DATA_PREFIX))?;
+    let compressed = STANDARD.decode(payload).ok()?;
+    let mut decoder = GzDecoder::new(compressed.as_slice());
+    let mut data = String::new();
+    decoder.read_to_string(&mut data).ok()?;
+
+    EmbeddedTestResults::from_json(&data)
+}
+
+fn parse_visible_test_results(body: &str) -> Option<TestResults> {
     let lines = body
         .lines()
         .map(clean_line)
@@ -87,25 +114,72 @@ fn parse_test_results(body: &str) -> Option<TestResults> {
     })
 }
 
+#[derive(Deserialize)]
+struct EmbeddedTestResults {
+    files: u64,
+    suites: u64,
+    duration: u64,
+    tests: u64,
+    tests_succ: u64,
+    tests_skip: u64,
+    tests_fail: u64,
+    tests_error: u64,
+    runs: u64,
+    runs_succ: u64,
+    runs_skip: u64,
+    runs_fail: u64,
+    runs_error: u64,
+    commit: String,
+}
+
+impl EmbeddedTestResults {
+    fn from_json(data: &str) -> Option<TestResults> {
+        let report = serde_json::from_str::<Self>(data).ok()?;
+
+        Some(TestResults {
+            files: report.files,
+            suites: report.suites,
+            duration: format_duration(report.duration),
+            tests: ResultCounts {
+                total: report.tests,
+                passed: report.tests_succ,
+                skipped: report.tests_skip,
+                failed: report.tests_fail + report.tests_error,
+            },
+            runs: ResultCounts {
+                total: report.runs,
+                passed: report.runs_succ,
+                skipped: report.runs_skip,
+                failed: report.runs_fail + report.runs_error,
+            },
+            commit: report.commit,
+        })
+    }
+}
+
 fn is_report_metadata(line: &str) -> bool {
     line.is_empty()
-        || line.starts_with("[test-results]:")
+        || line.starts_with(TEST_RESULTS_DATA_PREFIX)
         || line.contains("This comment has been updated with latest results.")
 }
 
 fn counts_for(parts: &[&str], label: &str) -> Option<ResultCounts> {
     let label_index = parts.iter().position(|part| *part == label)?;
-    let values = parts.get(label_index + 1..)?;
+    let values = parts
+        .get(label_index + 1..)?
+        .iter()
+        .filter_map(parse_count)
+        .collect::<Vec<_>>();
 
-    if values.len() != 3 {
+    if values.len() < 3 {
         return None;
     }
 
     Some(ResultCounts {
         total: parse_count(parts.get(..label_index)?.join(""))?,
-        passed: parse_count(values[0])?,
-        skipped: parse_count(values[1])?,
-        failed: parse_count(values[2])?,
+        passed: values[0],
+        skipped: values[1],
+        failed: values[2],
     })
 }
 
@@ -141,6 +215,21 @@ fn format_count(count: u64) -> String {
     }
 
     formatted.chars().rev().collect()
+}
+
+fn format_duration(duration: u64) -> String {
+    let minutes = duration / 60;
+    let seconds = duration % 60;
+
+    if minutes == 0 {
+        format!("{seconds}s")
+    } else {
+        format!("{minutes}m {seconds}s")
+    }
+}
+
+fn display_commit(commit: &str) -> &str {
+    commit.get(..8).unwrap_or(commit)
 }
 
 fn clean_line(line: &str) -> String {
@@ -192,6 +281,17 @@ Results for commit 511c68ae.
 
 [test-results]:data:application/gzip;base64,H4sIAIy3mmoC/02NQQ6DIBBFr2JYdyEMCPYyDQ6YkKo0CKumdy8QRZfv/cmbL5ndYnfy7PijI3tysQIFldGkoKPzWxFcZJHHWGbgcNJrT4hVsUu93ServolZu6VEmrAh+HCchLTVl4zxg85mVtDU1ax8S1a+F9Gvq4sZiKAUB6WtRE6NwFGbmYGZQErAfpiMVaBGaSn5/QHgu00uCQEAAA=="#;
 
+    const DECORATED_REPORT: &str = r#"Test Results
+    4 files    156 suites   6m 58s ⏱️
+  347 tests   347 ✅ 0 💤 0 ❌
+1 388 runs  1 388 ✅ 0 💤 0 ❌
+
+Results for commit cb00d16d.
+
+[test-results]:data:application/gzip;base64,H4sIALPVpGoC/12NSwqDMAAFryJZd5F/Yi9T8oVQNSWflfTujUFb7XLmwbwV+DC5DO4DvQ0g11A6IMYb2ppUCXHZViSbaGPZZkLFQY9cjflXz/BqCn6FV2G6CJdSTLtJdemXRMqdjuZF/ZqdT8nO56KJ8xxKA2A0hBZxiwTjjmhhsEFMWTRq7RRXwo+CYo05eH8A/d7c5AkBAAA=
+
+:recycle: This comment has been updated with latest results."#;
+
     #[test]
     fn parses_publish_unit_test_result_comment() {
         let report = parse_test_results(REPORT).unwrap();
@@ -214,7 +314,7 @@ Results for commit 511c68ae.
                     skipped: 0,
                     failed: 1,
                 },
-                commit: "511c68ae".to_string(),
+                commit: "511c68ae7c41d5c9adf23db3773c06bde83897e1".to_string(),
             }
         );
     }
@@ -226,9 +326,44 @@ Results for commit 511c68ae.
         ))
         .unwrap();
 
-        assert_eq!(report.commit, "511c68ae");
+        assert_eq!(report.commit, "511c68ae7c41d5c9adf23db3773c06bde83897e1");
         assert_eq!(report.tests.failed, 1);
         assert_eq!(report.runs.total, 1224);
+    }
+
+    #[test]
+    fn parses_decorated_status_counts() {
+        let report = parse_test_results(DECORATED_REPORT).unwrap();
+
+        assert_eq!(report.commit, "cb00d16d1756e3b7c2c15ad19bbea6a7f9742b26");
+        assert_eq!(report.duration, "6m 58s");
+        assert_eq!(report.tests.total, 347);
+        assert_eq!(report.tests.passed, 347);
+        assert_eq!(report.tests.skipped, 0);
+        assert_eq!(report.tests.failed, 0);
+        assert_eq!(report.runs.total, 1388);
+        assert_eq!(report.runs.passed, 1388);
+        assert_eq!(report.runs.skipped, 0);
+        assert_eq!(report.runs.failed, 0);
+    }
+
+    #[test]
+    fn falls_back_to_visible_report() {
+        let report = parse_test_results(
+            r#"Test Results
+    4 files    156 suites   6m 58s ⏱️
+  347 tests   347 ✅ 0 💤 0 ❌
+1 388 runs  1 388 ✅ 0 💤 0 ❌
+
+Results for commit cb00d16d.
+
+:recycle: This comment has been updated with latest results."#,
+        )
+        .unwrap();
+
+        assert_eq!(report.commit, "cb00d16d");
+        assert_eq!(report.duration, "6m 58s ⏱️");
+        assert_eq!(report.runs.total, 1388);
     }
 
     #[test]

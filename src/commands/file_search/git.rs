@@ -15,7 +15,7 @@ pub fn git_pull(repo_path: &str) -> Result<(), Error> {
     let head = repo.head()?;
     let branch = head
         .shorthand()
-        .ok_or_else(|| Error::from_str("Invalid branch name"))?;
+        .map_err(|_| Error::from_str("Invalid branch name"))?;
     let branch_ref = format!("refs/heads/{}", branch);
 
     // Setup authentication callbacks (works for public repos and most ssh setups)
