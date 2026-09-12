@@ -51,16 +51,13 @@ fn parse_test_results(body: &str) -> Option<TestResults> {
     let lines = body
         .lines()
         .map(clean_line)
-        .filter(|line| !line.is_empty() && !line.starts_with("[test-results]:"))
+        .filter(|line| !is_report_metadata(line))
         .collect::<Vec<_>>();
 
-    if lines.first()? != "Test Results" {
-        return None;
-    }
-
-    let summary = lines.get(1)?;
-    let tests = lines.get(2)?;
-    let runs = lines.get(3)?;
+    let title_index = lines.iter().position(|line| line == "Test Results")?;
+    let summary = lines.get(title_index + 1)?;
+    let tests = lines.get(title_index + 2)?;
+    let runs = lines.get(title_index + 3)?;
     let commit = lines
         .iter()
         .find_map(|line| line.strip_prefix("Results for commit "))
@@ -88,6 +85,12 @@ fn parse_test_results(body: &str) -> Option<TestResults> {
         runs: counts_for(&runs, "runs")?,
         commit: commit.to_string(),
     })
+}
+
+fn is_report_metadata(line: &str) -> bool {
+    line.is_empty()
+        || line.starts_with("[test-results]:")
+        || line.contains("This comment has been updated with latest results.")
 }
 
 fn counts_for(parts: &[&str], label: &str) -> Option<ResultCounts> {
@@ -214,6 +217,18 @@ Results for commit 511c68ae.
                 commit: "511c68ae".to_string(),
             }
         );
+    }
+
+    #[test]
+    fn parses_updated_comment_notice() {
+        let report = parse_test_results(&format!(
+            ":recycle: This comment has been updated with latest results.\n\n{REPORT}\n\n:recycle: This comment has been updated with latest results."
+        ))
+        .unwrap();
+
+        assert_eq!(report.commit, "511c68ae");
+        assert_eq!(report.tests.failed, 1);
+        assert_eq!(report.runs.total, 1224);
     }
 
     #[test]
